@@ -63,3 +63,11 @@ variable "docker_repositories" {
   default     = []
   nullable    = true
 }
+
+variable "external_ecr_accounts" {
+  description = "The list of external ECR accounts to allow access to the repositories"
+  type        = list(string)
+  default     = []
+  nullable    = true
+  
+}

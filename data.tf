@@ -8,6 +8,7 @@ locals {
   health_omics_arn   = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.health_omics_role_name}"
   additional_buckets = var.additional_buckets != null ? var.additional_buckets : []
   buckets            = concat([aws_s3_bucket.output_bucket.arn, "${aws_s3_bucket.output_bucket.arn}/*"], local.additional_buckets)
+  ecr_resources = concat(["arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:*"], [for account in var.external_ecr_accounts: "arn:aws:ecr:${var.region}:${account}:*"]) 
 }
 
 
@@ -93,6 +94,18 @@ data "aws_iam_policy_document" "health_omics_service_policy" {
       "${aws_s3_bucket.output_bucket.arn}/*"
     ]
   }
+
+  statement {
+    sid = "AllowECRActions"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:BatchGetImage",
+      "ecr:GetDownloadUrlForLayer"
+    ]
+    resources = local.ecr_resources
+      
+  }
+
   statement {
     sid = "AllowLogs"
     actions = [
