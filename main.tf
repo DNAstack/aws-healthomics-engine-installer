@@ -57,13 +57,13 @@ resource "aws_iam_role" "health_omics_role" {
 
 }
 
-resource "aws_ecr_repository" "docker_repositories" {
-  for_each = var.docker_repositories
+resource "aws_ecr_repository" "ecr_repositories" {
+  for_each = var.ecr_repositories
   name     = each.value
 }
 
 resource "aws_ecr_repository_policy" "docker_repository_policy" {
-  for_each = var.docker_repositories
-  repository = aws_ecr_repository.docker_repositories[each.key].name
+  for_each = var.ecr_repositories
+  repository = aws_ecr_repository.ecr_repositories[each.key].name
   policy = data.aws_iam_policy_document.health_omics_ecr_policy.json
 }

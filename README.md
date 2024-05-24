@@ -21,13 +21,21 @@ DNAstack Workbench
 
 The following variables are defined in `variables.tf`:
 
+- `output_bucket_name`: (required) Name of the S3 bucket to store output data in
+- `additional_buckets`: Name of additional S3 buckets to add permissions to read from. It is assumed that these buckets already exist
 - `region`: AWS region to create the resources in.
-- `output_bucket_name`: Name of the S3 bucket to store output data.
 - `workbench_service_account_name`: Name of the IAM user for the workbench service account.
 - `health_omics_user_policy_name`: Name of the policy for the health omics user.
 - `health_omics_service_policy_name`: Name of the policy for the health omics service.
 - `health_omics_role_name`: Name of the IAM role for the health omics service.
-- `docker_repositories`: A list of Docker repository names to create and attach the appropriate IAM policies to 
+- `ecr_repositories`: A list of ecr repository names to create and attach the appropriate IAM policies to 
+- `external_ecr_accounts`: A list of account IDs to allow HealthOmics to pull docker images from.
+
+### Note on ECR Repositories
+If you are using ECR repositories, please note that permissions will still need to be granted directly on each external repository. The ecr_repositories variable in variables.tf allows you to specify a list of ECR repository names to create and attach the appropriate IAM policies to. However, this configuration only applies to the ECR repositories created within this Terraform configuration.
+
+For any external ECR repositories that you want to pull docker images from, you will need to manually grant the necessary permissions to the health omics service. This can be done by configuring the appropriate IAM policies on those repositories separately.
+
 
 ## Usage
 

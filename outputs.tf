@@ -22,6 +22,6 @@ output "output_bucket" {
 
 output "docker_repositories" {
     description = "The name of the docker repositories"
-    value       = [for repo in aws_ecr_repository.docker_repositories: repo.repository_url]
+    value       = [for repo in aws_ecr_repository.ecr_repositories: repo.repository_url]
 
 }

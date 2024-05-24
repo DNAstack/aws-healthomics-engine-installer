@@ -57,8 +57,8 @@ variable "health_omics_user_policy_name" {
 
 }
 
-variable "docker_repositories" {
-  description = "The list of docker images to create"
+variable "ecr_repositories" {
+  description = "The ecr of docker images to create"
   type        = set(string)
   default     = []
   nullable    = true
