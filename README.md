@@ -23,7 +23,7 @@ The following variables are defined in `variables.tf`:
 
 - `output_bucket_name`: (required) Name of the S3 bucket to store output data in
 - `additional_buckets`: Name of additional S3 buckets to add permissions to read from. It is assumed that these buckets already exist
-- `genome_references_bucket`: Name of S3 bucket with reference genomes to add permissions to read from. It is assumed that these buckets already exist
+- `genome_references_bucket`: Name of S3 bucket with reference genomes to add permissions to read from. It is assumed that this bucket already exist
 - `region`: AWS region to create the resources in.
 - `workbench_service_account_name`: Name of the IAM user for the workbench service account.
 - `health_omics_user_policy_name`: Name of the policy for the health omics user.
