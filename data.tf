@@ -5,9 +5,20 @@ data "aws_region" "current" {
 }
 
 locals {
+  genome_references_bucket_default = lookup({
+    "us-east-1"      = "arn:aws:s3:::aws-us-east-1-genome-references/dataset/"
+    "us-west-2"      = "arn:aws:s3:::aws-us-west-2-genome-references/dataset/"
+    "ap-southeast-1" = "arn:aws:s3:::aws-ap-southeast-1-genome-references/dataset/"
+    "eu-central-1"   = "arn:aws:s3:::aws-eu-central-1-genome-references/dataset/"
+    "eu-west-1"      = "arn:aws:s3:::aws-eu-west-1-genome-references/dataset/"
+    "eu-west-2"      = "arn:aws:s3:::aws-eu-west-2-genome-references/dataset/"
+    "il-central-1"   = "arn:aws:s3:::aws-il-central-1-genome-references/dataset/"
+  }, var.region, null)
+
   health_omics_arn   = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.health_omics_role_name}"
   additional_buckets = var.additional_buckets != null ? var.additional_buckets : []
-  buckets            = concat([aws_s3_bucket.output_bucket.arn, "${aws_s3_bucket.output_bucket.arn}/*"], local.additional_buckets)
+  genome_references_bucket = var.genome_references_bucket != null ? [var.genome_references_bucket] : [local.genome_references_bucket_default]
+  buckets = concat([aws_s3_bucket.output_bucket.arn, "${aws_s3_bucket.output_bucket.arn}/*"], local.additional_buckets, local.genome_references_bucket)
   ecr_resources = concat(["arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:*"], [for account in var.external_ecr_accounts: "arn:aws:ecr:${var.region}:${account}:*"]) 
 }
 

@@ -9,7 +9,6 @@ variable "workbench_service_account_name" {
   type        = string
   default     = "workbench-health-omics"
   nullable    = false
-
 }
 
 variable "force_destroy" {
@@ -35,26 +34,32 @@ variable "region" {
     error_message = "Invalid region"
   }
 }
+
 variable "additional_buckets" {
   description = "Additional buckets to add to the policy"
   type        = list(string)
   default     = []
   nullable    = true
-
 }
+
+variable "genome_references_bucket" {
+  description = "The name of the genome references bucket"
+  type        = string
+  nullable    = true
+}
+
 variable "health_omics_service_policy_name" {
   description = "The name of the health omics service policy"
   type        = string
   default     = "HealthOmicsServicePolicy"
   nullable    = false
-
 }
+
 variable "health_omics_user_policy_name" {
   description = "The name of the health omics user policy"
   type        = string
   default     = "HealthOmicsUserPolicy"
   nullable    = false
-
 }
 
 variable "ecr_repositories" {
@@ -69,5 +74,4 @@ variable "external_ecr_accounts" {
   type        = list(string)
   default     = []
   nullable    = true
-  
 }
