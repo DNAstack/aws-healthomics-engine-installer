@@ -45,6 +45,7 @@ variable "additional_buckets" {
 variable "genome_references_bucket" {
   description = "The name of the genome references bucket"
   type        = string
+  default     = null
   nullable    = true
 }
 
