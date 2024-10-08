@@ -6,19 +6,18 @@ data "aws_region" "current" {
 
 locals {
   genome_references_bucket_default = lookup({
-    "us-east-1"      = "arn:aws:s3:::aws-us-east-1-genome-references/dataset"
-    "us-west-2"      = "arn:aws:s3:::aws-us-west-2-genome-references/dataset"
-    "ap-southeast-1" = "arn:aws:s3:::aws-ap-southeast-1-genome-references/dataset"
-    "eu-central-1"   = "arn:aws:s3:::aws-eu-central-1-genome-references/dataset"
-    "eu-west-1"      = "arn:aws:s3:::aws-eu-west-1-genome-references/dataset"
-    "eu-west-2"      = "arn:aws:s3:::aws-eu-west-2-genome-references/dataset"
-    "il-central-1"   = "arn:aws:s3:::aws-il-central-1-genome-references/dataset"
+    "us-east-1"      = "aws-us-east-1-genome-references/dataset"
+    "us-west-2"      = "aws-us-west-2-genome-references/dataset"
+    "ap-southeast-1" = "aws-ap-southeast-1-genome-references/dataset"
+    "eu-central-1"   = "aws-eu-central-1-genome-references/dataset"
+    "eu-west-1"      = "aws-eu-west-1-genome-references/dataset"
+    "eu-west-2"      = "aws-eu-west-2-genome-references/dataset"
+    "il-central-1"   = "aws-il-central-1-genome-references/dataset"
   }, var.region, null)
 
-  health_omics_arn   = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.health_omics_role_name}"
   additional_buckets = var.additional_buckets != null ? var.additional_buckets : []
-  genome_references_bucket = var.genome_references_bucket != null ? ["${var.genome_references_bucket}/*"] : ["${local.genome_references_bucket_default}/*"]
-  buckets = concat([aws_s3_bucket.output_bucket.arn, "${aws_s3_bucket.output_bucket.arn}/*"], local.additional_buckets, local.genome_references_bucket)
+  genome_references_bucket = var.genome_references_bucket != null ? [var.genome_references_bucket] : [local.genome_references_bucket_default]
+  buckets = [for bucket in concat([aws_s3_bucket.output_bucket.bucket], local.additional_buckets, local.genome_references_bucket): "arn:aws:s3:::${bucket}"]
   ecr_resources = concat(["arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:*"], [for account in var.external_ecr_accounts: "arn:aws:ecr:${var.region}:${account}:*"]) 
 }
 
@@ -47,13 +46,21 @@ data "aws_iam_policy_document" "health_omics_user_policy" {
   }
 
   statement {
-    sid = "AllowS3ReadOnlyAccess"
+    sid = "AllowS3ListBucket"
     actions = [
-      "s3:GetObject",
-      "s3:ListBucket",
+      "s3:ListBucket"
     ]
 
-    resources = local.buckets
+    resources = [for bucket in local.buckets: bucket]
+  }
+
+  statement {
+    sid = "AllowS3GetObject"
+    actions = [
+      "s3:GetObject"
+    ]
+
+    resources = [for bucket in local.buckets: "${bucket}/*"]
   }
 
   statement {
@@ -86,14 +93,23 @@ data "aws_iam_policy_document" "health_omics_trust_policy" {
 
 data "aws_iam_policy_document" "health_omics_service_policy" {
   statement {
-    sid = "AllowS3ReadOnlyAccess"
+    sid = "AllowS3ListBucket"
     actions = [
-      "s3:GetObject",
-      "s3:ListBucket",
+      "s3:ListBucket"
     ]
 
-    resources = local.buckets
+    resources = [for bucket in local.buckets: bucket]
   }
+
+  statement {
+    sid = "AllowS3GetObject"
+    actions = [
+      "s3:GetObject"
+    ]
+
+    resources = [for bucket in local.buckets: "${bucket}/*"]
+  }
+
   statement {
     sid = "UploadFilesToS3"
     actions = [

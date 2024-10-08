@@ -32,7 +32,6 @@ resource "aws_iam_policy" "health_omics_user_policy" {
   tags = {
     created_by = "terraform"
   }
-
 }
 
 resource "aws_iam_policy" "health_omics_service_policy" {
@@ -42,7 +41,6 @@ resource "aws_iam_policy" "health_omics_service_policy" {
   tags = {
     created_by = "terraform"
   }
-
 }
 
 resource "aws_iam_role" "health_omics_role" {
@@ -54,7 +52,6 @@ resource "aws_iam_role" "health_omics_role" {
   tags = {
     created_by = "terraform"
   }
-
 }
 
 resource "aws_ecr_repository" "ecr_repositories" {
