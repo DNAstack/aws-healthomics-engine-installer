@@ -12,7 +12,6 @@ output "secret_access_key" {
 output "role_arn" {
     description = "ARN of the role used by HealthOmics"
     value       = aws_iam_role.health_omics_role.arn
-  
 }
 
 output "output_bucket" {
@@ -23,5 +22,4 @@ output "output_bucket" {
 output "docker_repositories" {
     description = "The name of the docker repositories"
     value       = [for repo in aws_ecr_repository.ecr_repositories: repo.repository_url]
-
 }
