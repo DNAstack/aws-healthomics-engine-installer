@@ -1,24 +1,26 @@
 data "aws_caller_identity" "current" {}
 
 data "aws_region" "current" {
-  
+
 }
 
 locals {
-  genome_references_bucket_default = lookup({
-    "us-east-1"      = "aws-us-east-1-genome-references/dataset"
-    "us-west-2"      = "aws-us-west-2-genome-references/dataset"
-    "ap-southeast-1" = "aws-ap-southeast-1-genome-references/dataset"
-    "eu-central-1"   = "aws-eu-central-1-genome-references/dataset"
-    "eu-west-1"      = "aws-eu-west-1-genome-references/dataset"
-    "eu-west-2"      = "aws-eu-west-2-genome-references/dataset"
-    "il-central-1"   = "aws-il-central-1-genome-references/dataset"
-  }, var.region, null)
+  genome_references_bucket_default = lookup(coalesce(var.genome_references_bucket_region_map,{}), var.region, null)
 
-  additional_buckets = var.additional_buckets != null ? var.additional_buckets : []
-  genome_references_bucket = var.genome_references_bucket != null ? [var.genome_references_bucket] : [local.genome_references_bucket_default]
-  buckets = [for bucket in concat([aws_s3_bucket.output_bucket.bucket], local.additional_buckets, local.genome_references_bucket): "arn:aws:s3:::${bucket}"]
-  ecr_resources = concat(["arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:*"], [for account in var.external_ecr_accounts: "arn:aws:ecr:${var.region}:${account}:*"]) 
+  managed_ecr_resource = lookup(coalesce(var.managed_ecr_resources_region_map,{}), var.region, null)
+
+  additional_buckets       = var.additional_buckets != null ? var.additional_buckets : []
+  genome_references_bucket = var.genome_references_bucket != null ? [var.genome_references_bucket] : compact([
+    local.genome_references_bucket_default
+  ])
+  buckets = [
+    for bucket in concat([
+      aws_s3_bucket.output_bucket.bucket
+    ], local.additional_buckets, local.genome_references_bucket) : "arn:aws:s3:::${bucket}"
+  ]
+  ecr_resources = concat(["arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:*"], [
+    for account in var.external_ecr_accounts : "arn:aws:ecr:${var.region}:${account}:*"
+  ], local.managed_ecr_resource == null ? [] : [local.managed_ecr_resource])
 }
 
 
@@ -33,7 +35,7 @@ data "aws_iam_policy_document" "health_omics_user_policy" {
     condition {
       test     = "StringEquals"
       variable = "iam:PassedToService"
-      values   = ["omics.amazonaws.com"]
+      values = ["omics.amazonaws.com"]
     }
   }
 
@@ -51,7 +53,7 @@ data "aws_iam_policy_document" "health_omics_user_policy" {
       "s3:ListBucket"
     ]
 
-    resources = [for bucket in local.buckets: bucket]
+    resources = [for bucket in local.buckets : bucket]
   }
 
   statement {
@@ -60,7 +62,7 @@ data "aws_iam_policy_document" "health_omics_user_policy" {
       "s3:GetObject"
     ]
 
-    resources = [for bucket in local.buckets: "${bucket}/*"]
+    resources = [for bucket in local.buckets : "${bucket}/*"]
   }
 
   statement {
@@ -84,7 +86,7 @@ data "aws_iam_policy_document" "health_omics_trust_policy" {
     ]
 
     principals {
-      type        = "Service"
+      type = "Service"
       identifiers = ["omics.amazonaws.com"]
     }
   }
@@ -98,7 +100,7 @@ data "aws_iam_policy_document" "health_omics_service_policy" {
       "s3:ListBucket"
     ]
 
-    resources = [for bucket in local.buckets: bucket]
+    resources = [for bucket in local.buckets : bucket]
   }
 
   statement {
@@ -107,7 +109,7 @@ data "aws_iam_policy_document" "health_omics_service_policy" {
       "s3:GetObject"
     ]
 
-    resources = [for bucket in local.buckets: "${bucket}/*"]
+    resources = [for bucket in local.buckets : "${bucket}/*"]
   }
 
   statement {
@@ -130,7 +132,7 @@ data "aws_iam_policy_document" "health_omics_service_policy" {
       "ecr:GetDownloadUrlForLayer"
     ]
     resources = local.ecr_resources
-      
+
   }
 
   statement {
@@ -150,11 +152,11 @@ data "aws_iam_policy_document" "health_omics_service_policy" {
 
 data "aws_iam_policy_document" "health_omics_ecr_policy" {
   statement {
-    sid       = "OmicsWorkflow Access"
-    effect    = "Allow"
-    
+    sid    = "OmicsWorkflow Access"
+    effect = "Allow"
+
     principals {
-      type        = "Service"
+      type = "Service"
       identifiers = ["omics.amazonaws.com"]
     }
 
