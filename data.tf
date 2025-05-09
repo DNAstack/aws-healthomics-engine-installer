@@ -22,7 +22,7 @@ locals {
   service_policy_buckets = [
     for bucket in concat([
       aws_s3_bucket.output_bucket.bucket,
-      var.external_raw_data_bucket_arn,
+      var.external_raw_data_bucket_name,
     ], local.additional_buckets, local.genome_references_bucket) : "arn:aws:s3:::${bucket}"
   ]
 
