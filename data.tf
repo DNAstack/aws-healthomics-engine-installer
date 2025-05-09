@@ -18,6 +18,14 @@ locals {
       aws_s3_bucket.output_bucket.bucket
     ], local.additional_buckets, local.genome_references_bucket) : "arn:aws:s3:::${bucket}"
   ]
+
+  service_policy_buckets = [
+    for bucket in compact(concat([
+      aws_s3_bucket.output_bucket.bucket,
+      var.external_raw_data_bucket_name,
+    ], local.additional_buckets, local.genome_references_bucket)) : "arn:aws:s3:::${bucket}"
+  ]
+
   ecr_resources = concat(["arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:*"], [
     for account in var.external_ecr_accounts : "arn:aws:ecr:${var.region}:${account}:*"
   ], local.managed_ecr_resource == null ? [] : [local.managed_ecr_resource])
@@ -100,7 +108,7 @@ data "aws_iam_policy_document" "health_omics_service_policy" {
       "s3:ListBucket"
     ]
 
-    resources = [for bucket in local.buckets : bucket]
+    resources = [for bucket in local.service_policy_buckets : bucket]
   }
 
   statement {
@@ -109,7 +117,7 @@ data "aws_iam_policy_document" "health_omics_service_policy" {
       "s3:GetObject"
     ]
 
-    resources = [for bucket in local.buckets : "${bucket}/*"]
+    resources = [for bucket in local.service_policy_buckets : "${bucket}/*"]
   }
 
   statement {

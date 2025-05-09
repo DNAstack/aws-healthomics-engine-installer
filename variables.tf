@@ -109,3 +109,10 @@ variable "managed_ecr_resources_region_map" {
   }
   nullable = true
 }
+
+variable "external_raw_data_bucket_name" {
+    description = "The name of the external raw data bucket"
+    type        = string
+    default     = null
+    nullable    = true
+}
