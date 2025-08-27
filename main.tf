@@ -64,3 +64,28 @@ resource "aws_ecr_repository_policy" "docker_repository_policy" {
   repository = aws_ecr_repository.ecr_repositories[each.key].name
   policy = data.aws_iam_policy_document.health_omics_ecr_policy.json
 }
+
+
+resource "aws_servicequotas_service_quota" "submit_run_quota" {
+  quota_code   = "L-24A3B174"
+  service_code = "omics"
+  value        = var.submit_run_quota
+}
+
+resource "aws_servicequotas_service_quota" "maximum_concurrent_tasks" {
+  quota_code = "L-25504C8C"
+  service_code = "omics"
+  value      = var.maximum_concurrent_tasks
+}
+
+resource "aws_servicequotas_service_quota" "maximum_concurrent_active_runs_with_dynamic_storage" {
+  quota_code = "L-BE38079A"
+  service_code = "omics"
+  value      = var.max_runs_with_dynamic_storage_quota
+}
+
+resource "aws_servicequotas_service_quota" "maximum_concurrent_active_runs_with_static_storage" {
+  quota_code = "L-A30FD31B"
+  service_code = "omics"
+  value      = var.max_runs_with_static_storage_quota
+}
