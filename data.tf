@@ -5,11 +5,11 @@ data "aws_region" "current" {
 }
 
 locals {
-  genome_references_bucket_default = lookup(coalesce(var.genome_references_bucket_region_map,{}), var.region, null)
+  genome_references_bucket_default = lookup(coalesce(var.genome_references_bucket_region_map, {}), var.region, null)
 
-  managed_ecr_resource = lookup(coalesce(var.managed_ecr_resources_region_map,{}), var.region, null)
+  managed_ecr_resource = lookup(coalesce(var.managed_ecr_resources_region_map, {}), var.region, null)
 
-  additional_buckets       = var.additional_buckets != null ? var.additional_buckets : []
+  additional_buckets = var.additional_buckets != null ? var.additional_buckets : []
   genome_references_bucket = var.genome_references_bucket != null ? [var.genome_references_bucket] : compact([
     local.genome_references_bucket_default
   ])
@@ -43,7 +43,7 @@ data "aws_iam_policy_document" "health_omics_user_policy" {
     condition {
       test     = "StringEquals"
       variable = "iam:PassedToService"
-      values = ["omics.amazonaws.com"]
+      values   = ["omics.amazonaws.com"]
     }
   }
 
@@ -94,7 +94,7 @@ data "aws_iam_policy_document" "health_omics_trust_policy" {
     ]
 
     principals {
-      type = "Service"
+      type        = "Service"
       identifiers = ["omics.amazonaws.com"]
     }
   }
@@ -164,7 +164,7 @@ data "aws_iam_policy_document" "health_omics_ecr_policy" {
     effect = "Allow"
 
     principals {
-      type = "Service"
+      type        = "Service"
       identifiers = ["omics.amazonaws.com"]
     }
 
@@ -173,5 +173,30 @@ data "aws_iam_policy_document" "health_omics_ecr_policy" {
       "ecr:BatchGetImage",
       "ecr:GetDownloadUrlForLayer"
     ]
+  }
+}
+
+data "aws_iam_policy_document" "output_bucket_policy" {
+  statement {
+    sid    = "DenyInsecureTransport"
+    effect = "Deny"
+
+    principals {
+      type        = "AWS"
+      identifiers = ["*"]
+    }
+
+    actions = ["s3:*"]
+
+    resources = [
+      aws_s3_bucket.output_bucket.arn,
+      "${aws_s3_bucket.output_bucket.arn}/*"
+    ]
+
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
   }
 }
