@@ -9,6 +9,12 @@ resource "aws_s3_bucket" "output_bucket" {
   }
 }
 
+# S3 Bucket Policy - Deny insecure transport (HTTP)
+resource "aws_s3_bucket_policy" "output_bucket_policy" {
+  bucket = aws_s3_bucket.output_bucket.id
+  policy = data.aws_iam_policy_document.output_bucket_policy.json
+}
+
 resource "aws_iam_user" "workbench_service_account" {
   name = var.workbench_service_account_name
   tags = {
@@ -60,9 +66,9 @@ resource "aws_ecr_repository" "ecr_repositories" {
 }
 
 resource "aws_ecr_repository_policy" "docker_repository_policy" {
-  for_each = var.ecr_repositories
+  for_each   = var.ecr_repositories
   repository = aws_ecr_repository.ecr_repositories[each.key].name
-  policy = data.aws_iam_policy_document.health_omics_ecr_policy.json
+  policy     = data.aws_iam_policy_document.health_omics_ecr_policy.json
 }
 
 
@@ -73,19 +79,19 @@ resource "aws_servicequotas_service_quota" "submit_run_quota" {
 }
 
 resource "aws_servicequotas_service_quota" "maximum_concurrent_tasks" {
-  quota_code = "L-25504C8C"
+  quota_code   = "L-25504C8C"
   service_code = "omics"
-  value      = var.maximum_concurrent_tasks
+  value        = var.maximum_concurrent_tasks
 }
 
 resource "aws_servicequotas_service_quota" "maximum_concurrent_active_runs_with_dynamic_storage" {
-  quota_code = "L-BE38079A"
+  quota_code   = "L-BE38079A"
   service_code = "omics"
-  value      = var.max_runs_with_dynamic_storage_quota
+  value        = var.max_runs_with_dynamic_storage_quota
 }
 
 resource "aws_servicequotas_service_quota" "maximum_concurrent_active_runs_with_static_storage" {
-  quota_code = "L-A30FD31B"
+  quota_code   = "L-A30FD31B"
   service_code = "omics"
-  value      = var.max_runs_with_static_storage_quota
+  value        = var.max_runs_with_static_storage_quota
 }
