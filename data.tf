@@ -156,6 +156,29 @@ data "aws_iam_policy_document" "health_omics_service_policy" {
       "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/omics/*"
     ]
   }
+
+  dynamic "statement" {
+    for_each = length(var.outbound_identity_token_audiences) > 0 ? [1] : []
+    content {
+      sid = "AllowGetWebIdentityToken"
+      actions = [
+        "sts:GetWebIdentityToken"
+      ]
+      resources = ["*"]
+
+      condition {
+        test     = "ForAnyValue:StringEquals"
+        variable = "sts:IdentityTokenAudience"
+        values   = var.outbound_identity_token_audiences
+      }
+
+      condition {
+        test     = "NumericLessThanEquals"
+        variable = "sts:DurationSeconds"
+        values   = ["3600"]
+      }
+    }
+  }
 }
 
 data "aws_iam_policy_document" "health_omics_ecr_policy" {
