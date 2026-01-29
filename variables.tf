@@ -143,3 +143,9 @@ variable "submit_run_quota" {
   type        = number
   default     = 1
 }
+
+variable "outbound_identity_token_audiences" {
+  description = "Allowed audience URLs for outbound identity federation tokens (e.g., passport URLs)"
+  type        = list(string)
+  default     = ["https://passport.dnastack.com"]
+}
