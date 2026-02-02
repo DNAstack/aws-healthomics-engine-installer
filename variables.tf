@@ -141,7 +141,7 @@ variable "maximum_concurrent_tasks" {
 variable "submit_run_quota" {
   description = "The def number of submit run quota"
   type        = number
-  default     = 1
+  default     = 5
 }
 
 variable "outbound_identity_token_audiences" {
