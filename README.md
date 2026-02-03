@@ -29,8 +29,19 @@ The following variables are defined in `variables.tf`:
 - `health_omics_user_policy_name`: Name of the policy for the health omics user.
 - `health_omics_service_policy_name`: Name of the policy for the health omics service.
 - `health_omics_role_name`: Name of the IAM role for the health omics service.
-- `ecr_repositories`: A list of ecr repository names to create and attach the appropriate IAM policies to 
+- `ecr_repositories`: A list of ecr repository names to create and attach the appropriate IAM policies to
 - `external_ecr_accounts`: A list of account IDs to allow HealthOmics to pull docker images from.
+- `outbound_identity_token_audiences`: Allowed audience URLs for outbound identity federation tokens requested by role.
+
+### Note on Outbound Identity Token Audiences
+
+The `outbound_identity_token_audiences` variable controls which passport instances the workbench service account can 
+request web identity tokens for. When configured, this enables the service account to obtain tokens that can be used to 
+authenticate with external passport services for data access.  
+Set this to the URL of your relevant passport instance(s) in addition to other flags in tf apply:  
+`terraform apply -var='outbound_identity_token_audiences=["https://passport.dnastack.com/"]'`
+This will output a Token Issuer URL which will have to be configured on the passport instances: 
+`https://github.com/DNAstack/wallet/blob/master/docs/setup/EXTERNAL-ISSUER.md`
 
 ### Note on ECR Repositories
 If you are using ECR repositories, please note that permissions will still need to be granted directly on each external repository. The ecr_repositories variable in variables.tf allows you to specify a list of ECR repository names to create and attach the appropriate IAM policies to. However, this configuration only applies to the ECR repositories created within this Terraform configuration.
