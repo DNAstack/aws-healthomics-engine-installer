@@ -145,7 +145,7 @@ variable "submit_run_quota" {
 }
 
 variable "outbound_identity_token_audiences" {
-  description = "Allowed audience URLs for outbound identity federation tokens (e.g., passport URLs)"
+  description = "List of allowed audiences for outbound identity federation tokens (e.g., Client IDs)"
   type        = list(string)
-  default     = ["https://passport.dnastack.com"]
+  default     = ["explorer.gcp-managed-deployments.dnastack.com-public"]
 }
