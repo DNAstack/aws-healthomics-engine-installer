@@ -11,15 +11,22 @@ data "aws_vpc" "this" {
 }
 
 locals {
-  # Base interface endpoints every VPC-connected run needs: image pull (ecr.api/ecr.dkr)
-  # and logging (logs). S3 uses the gateway endpoint below. There is no plain
-  # "omics" interface endpoint — HealthOmics PrivateLink services are workflows-omics,
-  # storage-omics, control-storage-omics, analytics-omics, tags-omics. The run ENIs
-  # don't call the HealthOmics control plane (Workbench/Wallet does that from outside
-  # the VPC), so those are added per-env via var.additional_interface_endpoints only
-  # when bioinformatics confirms a workflow reaches HealthOmics Storage/APIs in-VPC.
+  # Base interface endpoints every VPC-connected run needs: image pull (ecr.api/ecr.dkr),
+  # logging (logs), and STS (sts) for outbound workload identity federation — the run calls
+  # sts:GetWebIdentityToken to fetch the engine SA's subject token for the Passport token
+  # exchange, which times out behind the locked-down egress without an in-VPC endpoint.
+  # S3 uses the gateway endpoint below. There is no plain "omics" interface endpoint —
+  # HealthOmics PrivateLink services are workflows-omics, storage-omics, control-storage-omics,
+  # analytics-omics, tags-omics. The run ENIs don't call the HealthOmics control plane
+  # (Workbench/Wallet does that from outside the VPC), so those are added per-env via
+  # var.additional_interface_endpoints only when bioinformatics confirms a workflow reaches
+  # HealthOmics Storage/APIs in-VPC.
+  #
+  # NOTE: the sts endpoint's private DNS only covers sts.${var.aws_region}.amazonaws.com. A
+  # client that leaves AWS_REGION unset defaults to sts.us-east-1.amazonaws.com, which a
+  # non-us-east-1 endpoint will NOT intercept — pin AWS_REGION to the engine region on the run.
   interface_endpoint_services = var.enable_vpc_networking ? setunion(
-    toset(["ecr.api", "ecr.dkr", "logs"]),
+    toset(["ecr.api", "ecr.dkr", "logs", "sts"]),
     var.additional_interface_endpoints,
   ) : toset([])
 }
@@ -112,7 +119,7 @@ resource "aws_vpc_endpoint" "s3" {
   }
 }
 
-# Interface endpoints (ECR api/dkr, CloudWatch Logs, HealthOmics, + extras).
+# Interface endpoints (ECR api/dkr, CloudWatch Logs, STS, + extras).
 resource "aws_vpc_endpoint" "interface" {
   for_each            = local.interface_endpoint_services
   vpc_id              = var.vpc_id
