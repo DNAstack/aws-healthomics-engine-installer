@@ -11,8 +11,15 @@ data "aws_vpc" "this" {
 }
 
 locals {
+  # Base interface endpoints every VPC-connected run needs: image pull (ecr.api/ecr.dkr)
+  # and logging (logs). S3 uses the gateway endpoint below. There is no plain
+  # "omics" interface endpoint — HealthOmics PrivateLink services are workflows-omics,
+  # storage-omics, control-storage-omics, analytics-omics, tags-omics. The run ENIs
+  # don't call the HealthOmics control plane (Workbench/Wallet does that from outside
+  # the VPC), so those are added per-env via var.additional_interface_endpoints only
+  # when bioinformatics confirms a workflow reaches HealthOmics Storage/APIs in-VPC.
   interface_endpoint_services = var.enable_vpc_networking ? setunion(
-    toset(["ecr.api", "ecr.dkr", "logs", "omics"]),
+    toset(["ecr.api", "ecr.dkr", "logs"]),
     var.additional_interface_endpoints,
   ) : toset([])
 }
