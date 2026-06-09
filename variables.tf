@@ -144,3 +144,51 @@ variable "outbound_identity_token_audiences" {
   type        = list(string)
   default     = ["explorer.gcp-managed-deployments.dnastack.com-public"]
 }
+
+variable "enable_vpc_networking" {
+  description = "Enable VPC-connected HealthOmics (GA): VPC endpoints, the omics egress SG, and the awscc_omics_configuration resource."
+  type        = bool
+  default     = false
+}
+
+variable "vpc_id" {
+  description = "VPC ID hosting the HealthOmics run ENIs. Required when enable_vpc_networking is true."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "private_subnet_ids" {
+  description = "Private subnet IDs (HealthOmics-supported AZs) for the run ENIs and interface endpoints."
+  type        = list(string)
+  default     = []
+  nullable    = false
+}
+
+variable "private_route_table_ids" {
+  description = "Private route table IDs for the S3 gateway endpoint."
+  type        = list(string)
+  default     = []
+  nullable    = false
+}
+
+variable "omics_egress_cidrs" {
+  description = "CIDRs the workflow ENIs may reach on 443 via NAT (e.g. Passport)."
+  type        = list(string)
+  default     = []
+  nullable    = false
+}
+
+variable "additional_interface_endpoints" {
+  description = "Extra interface VPC endpoint short service names to create (e.g. \"dynamodb\", \"secretsmanager\")."
+  type        = set(string)
+  default     = []
+  nullable    = false
+}
+
+variable "configuration_name" {
+  description = "Name of the HealthOmics Configuration resource. Defaults to <project_name>-vpc."
+  type        = string
+  default     = null
+  nullable    = true
+}
