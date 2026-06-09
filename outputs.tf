@@ -23,3 +23,13 @@ output "docker_repositories" {
   description = "URLs of the ECR repositories created by this module"
   value       = [for repo in aws_ecr_repository.ecr_repositories : repo.repository_url]
 }
+
+output "omics_configuration_name" {
+  description = "Name of the HealthOmics VPC Configuration (null when disabled)"
+  value       = var.enable_vpc_networking ? awscc_omics_configuration.this[0].name : null
+}
+
+output "omics_configuration_arn" {
+  description = "ARN of the HealthOmics VPC Configuration (null when disabled)"
+  value       = var.enable_vpc_networking ? awscc_omics_configuration.this[0].arn : null
+}
