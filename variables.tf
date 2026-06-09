@@ -1,7 +1,30 @@
-variable "output_bucket_name" {
-  description = "The name of the output bucket"
+variable "aws_region" {
+  description = "AWS region in which the resources will be created"
   type        = string
   nullable    = false
+  validation {
+    condition = contains([
+      "us-east-1", "us-west-2", "ap-southeast-1", "ap-northeast-2", "eu-central-1", "eu-west-1", "eu-west-2", "il-central-1"
+    ], var.aws_region)
+    error_message = "Region is not supported by AWS HealthOmics"
+  }
+}
+
+variable "aws_profile" {
+  description = "AWS CLI profile name"
+  type        = string
+}
+
+variable "project_name" {
+  description = "Name of project used to prefix deployed assets"
+  type        = string
+}
+
+variable "output_bucket_name" {
+  description = "Name of the S3 bucket to store HealthOmics output data in. Defaults to <project_name>-raw-output."
+  type        = string
+  default     = null
+  nullable    = true
 }
 
 variable "workbench_service_account_name" {
@@ -24,19 +47,6 @@ variable "health_omics_role_name" {
   nullable    = false
 }
 
-variable "region" {
-  description = "The region in which the resources will be created"
-  type        = string
-  default     = "us-east-1"
-  nullable    = false
-  validation {
-    condition = contains([
-      "us-east-1", "us-west-2", "ap-southeast-1", "eu-central-1", "eu-west-1", "eu-west-2", "il-central-1"
-    ], var.region)
-    error_message = "Invalid region"
-  }
-}
-
 variable "additional_buckets" {
   description = "Additional buckets to add to the policy"
   type        = list(string)
@@ -45,7 +55,7 @@ variable "additional_buckets" {
 }
 
 variable "genome_references_bucket" {
-  description = "The name of the genome references bucket"
+  description = "The name of the genome references bucket. Overrides the per-region default from genome_references_bucket_region_map when set."
   type        = string
   default     = null
   nullable    = true
@@ -65,9 +75,8 @@ variable "health_omics_user_policy_name" {
   nullable    = false
 }
 
-
 variable "ecr_repositories" {
-  description = "The ecr of docker images to create"
+  description = "The set of ECR repository names to create"
   type        = set(string)
   default     = []
   nullable    = true
@@ -81,12 +90,13 @@ variable "external_ecr_accounts" {
 }
 
 variable "genome_references_bucket_region_map" {
-  description = "The name of the genomics references bucket"
+  description = "Per-region map of managed genome references buckets"
   type        = map(string)
   default = {
     "us-east-1"      = "aws-us-east-1-genome-references/dataset"
     "us-west-2"      = "aws-us-west-2-genome-references/dataset"
     "ap-southeast-1" = "aws-ap-southeast-1-genome-references/dataset"
+    "ap-northeast-2" = "aws-ap-northeast-2-genome-references/dataset"
     "eu-central-1"   = "aws-eu-central-1-genome-references/dataset"
     "eu-west-1"      = "aws-eu-west-1-genome-references/dataset"
     "eu-west-2"      = "aws-eu-west-2-genome-references/dataset"
@@ -95,51 +105,36 @@ variable "genome_references_bucket_region_map" {
   nullable = true
 }
 
-variable "managed_ecr_resources_region_map" {
-  description = "The ARN of the managed ECR resource"
-  type        = map(string)
-  default = {
-    "us-east-1"      = "arn:aws:ecr:us-east-1:937525261261:*"
-    "us-west-2"      = "arn:aws:ecr:us-west-2:937525261261:*"
-    "ap-southeast-1" = "arn:aws:ecr:ap-southeast-1:937525261261:*"
-    "eu-central-1"   = "arn:aws:ecr:eu-central-1:937525261261:*"
-    "eu-west-1"      = "arn:aws:ecr:eu-west-1:937525261261:*"
-    "eu-west-2"      = "arn:aws:ecr:eu-west-2:937525261261:*"
-    "il-central-1"   = "arn:aws:ecr:il-central-1:937525261261:*"
-  }
-  nullable = true
-}
-
 variable "external_raw_data_bucket_name" {
-  description = "The name of the external raw data bucket"
+  description = "Name of an external raw-data bucket to grant the service-policy read access to"
   type        = string
   default     = null
   nullable    = true
 }
 
 variable "max_runs_with_static_storage_quota" {
-  description = "The def number of maximum concurrent runs with static storage quota"
+  description = "Service quota for maximum concurrent runs with static storage"
   type        = number
   default     = 50
   nullable    = false
 }
 
 variable "max_runs_with_dynamic_storage_quota" {
-  description = "The def number of maximum concurrent runs with dynamic storage quota"
+  description = "Service quota for maximum concurrent runs with dynamic storage"
   type        = number
   default     = 200
   nullable    = false
 }
 
 variable "maximum_concurrent_tasks" {
-  description = "The def number of maximum concurrent tasks"
+  description = "Service quota for maximum concurrent tasks"
   type        = number
   default     = 100
   nullable    = false
 }
 
 variable "submit_run_quota" {
-  description = "The def number of submit run quota"
+  description = "Service quota for submit-run TPS"
   type        = number
   default     = 5
 }
