@@ -68,6 +68,17 @@ resource "aws_security_group" "omics_egress" {
     cidr_blocks = [data.aws_vpc.this[0].cidr_block]
   }
 
+  # S3 reached via the gateway endpoint resolves to S3's public IPs (the managed
+  # prefix list), so a restrictive egress SG must explicitly allow it — otherwise
+  # the output bucket and any us-east-1 input buckets are blocked at runtime.
+  egress {
+    description     = "HTTPS to S3 via gateway endpoint"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    prefix_list_ids = [aws_vpc_endpoint.s3[0].prefix_list_id]
+  }
+
   egress {
     description = "DNS (UDP) to VPC resolver"
     from_port   = 53
