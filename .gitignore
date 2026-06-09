@@ -1,6 +1,9 @@
 # Local .terraform directories
 **/.terraform/*
 
+# Lock files are owned by the consuming root module, not this reusable module
+.terraform.lock.hcl
+
 # .tfstate files
 *.tfstate
 *.tfstate.*
