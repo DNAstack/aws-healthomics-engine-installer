@@ -142,7 +142,10 @@ variable "submit_run_quota" {
 variable "outbound_identity_token_audiences" {
   description = "List of allowed audiences for outbound identity federation tokens (e.g., Client IDs)"
   type        = list(string)
-  default     = ["explorer.gcp-managed-deployments.dnastack.com-public"]
+  default = [
+    "explorer.gcp-managed-deployments.dnastack.com-public",
+    "publisher-data-consumer-public-client",
+  ]
 }
 
 variable "enable_vpc_networking" {
