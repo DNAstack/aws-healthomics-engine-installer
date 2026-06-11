@@ -1,5 +1,6 @@
 resource "aws_s3_bucket" "output_bucket" {
-  bucket = var.output_bucket_name
+  bucket        = local.output_bucket_name
+  force_destroy = var.force_destroy
   tags = {
     created_by = "terraform"
   }
@@ -66,7 +67,6 @@ resource "aws_ecr_repository_policy" "docker_repository_policy" {
   repository = aws_ecr_repository.ecr_repositories[each.key].name
   policy     = data.aws_iam_policy_document.health_omics_ecr_policy.json
 }
-
 
 resource "aws_servicequotas_service_quota" "submit_run_quota" {
   quota_code   = "L-24A3B174"

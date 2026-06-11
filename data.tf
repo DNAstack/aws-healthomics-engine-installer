@@ -1,13 +1,9 @@
 data "aws_caller_identity" "current" {}
 
-data "aws_region" "current" {
-
-}
-
 locals {
-  genome_references_bucket_default = lookup(coalesce(var.genome_references_bucket_region_map, {}), var.region, null)
+  output_bucket_name = coalesce(var.output_bucket_name, "${var.project_name}-raw-output")
 
-  managed_ecr_resource = lookup(coalesce(var.managed_ecr_resources_region_map, {}), var.region, null)
+  genome_references_bucket_default = lookup(coalesce(var.genome_references_bucket_region_map, {}), var.aws_region, null)
 
   additional_buckets = var.additional_buckets != null ? var.additional_buckets : []
   genome_references_bucket = var.genome_references_bucket != null ? [var.genome_references_bucket] : compact([
@@ -26,9 +22,9 @@ locals {
     ], local.additional_buckets, local.genome_references_bucket)) : "arn:aws:s3:::${bucket}"
   ]
 
-  ecr_resources = concat(["arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:*"], [
-    for account in var.external_ecr_accounts : "arn:aws:ecr:${var.region}:${account}:*"
-  ], local.managed_ecr_resource == null ? [] : [local.managed_ecr_resource])
+  ecr_resources = concat(["arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:*"], [
+    for account in var.external_ecr_accounts : "arn:aws:ecr:${var.aws_region}:${account}:*"
+  ])
 }
 
 
@@ -81,7 +77,7 @@ data "aws_iam_policy_document" "health_omics_user_policy" {
     ]
 
     resources = [
-      "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/omics/*"
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/omics/*"
     ]
   }
 }
@@ -140,7 +136,6 @@ data "aws_iam_policy_document" "health_omics_service_policy" {
       "ecr:GetDownloadUrlForLayer"
     ]
     resources = local.ecr_resources
-
   }
 
   statement {
@@ -153,7 +148,7 @@ data "aws_iam_policy_document" "health_omics_service_policy" {
     ]
 
     resources = [
-      "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/omics/*"
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/omics/*"
     ]
   }
 
