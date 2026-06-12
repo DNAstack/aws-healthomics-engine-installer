@@ -3,6 +3,8 @@ data "aws_caller_identity" "current" {}
 locals {
   output_bucket_name = coalesce(var.output_bucket_name, "${var.project_name}-raw-output")
 
+  workflow_file_outputs_bucket_name = "${var.project_name}-workflow-file-outputs"
+
   genome_references_bucket_default = lookup(coalesce(var.genome_references_bucket_region_map, {}), var.aws_region, null)
 
   additional_buckets = var.additional_buckets != null ? var.additional_buckets : []
@@ -12,7 +14,7 @@ locals {
   buckets = [
     for bucket in concat([
       aws_s3_bucket.output_bucket.bucket
-    ], local.additional_buckets, local.genome_references_bucket) : "arn:aws:s3:::${bucket}"
+    ], local.additional_buckets, local.genome_references_bucket, [local.workflow_file_outputs_bucket_name]) : "arn:aws:s3:::${bucket}"
   ]
 
   service_policy_buckets = [
