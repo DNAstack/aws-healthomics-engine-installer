@@ -54,7 +54,10 @@ Objects the tagger misses carry no tag and are governed by `expire-all`, so a
 tagging outage costs a bounded window rather than unbounded growth.
 
 The `retention` key is reserved for this function; anything else that writes
-it on this bucket will have its value overwritten.
+it on this bucket will have its value overwritten. The tag key and value are
+passed to the Lambda by Terraform (`RETENTION_TAG_KEY` / `RETENTION_TAG_VALUE`,
+sourced from the same locals as the lifecycle rule's filter), so they cannot
+drift from the lifecycle rule that depends on them.
 
 Two constraints on changes here:
 

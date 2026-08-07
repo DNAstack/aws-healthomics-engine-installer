@@ -8,14 +8,13 @@ catch-all rule then governs.
 """
 
 import logging
+import os
 import urllib.parse
 
 import boto3
 from botocore.exceptions import ClientError
 
 RETAINED_SUFFIXES = (".log", ".json")
-TAG_KEY = "retention"
-TAG_VALUE = "transient"
 
 # The object was removed between the notification and the tagging call. Routine
 # when HealthOmics cleans up its own intermediates, and nothing is left to expire.
@@ -23,6 +22,19 @@ GONE_ERROR_CODES = ("NoSuchKey", "NoSuchVersion", "404")
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+
+def _required_env(name):
+    """Read a required environment variable, failing loudly if it's absent.
+
+    No default: the tag key and value must match the lifecycle rule's filter
+    exactly, and a silent default here would recreate the same drift risk the
+    Terraform-sourced environment variables exist to close.
+    """
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(f"required environment variable {name} is not set")
+    return value
 
 
 def is_transient(key):
@@ -45,22 +57,22 @@ def record_key(record):
     )
 
 
-def object_keys(event):
-    """Yield (bucket, key) for each record, with the key percent-decoded."""
-    for record in event.get("Records", []):
-        yield record_key(record)
-
-
 def tag_transient(client, bucket, key):
     """Add the expiry tag, preserving any tags already on the object.
 
     PutObjectTagging replaces the whole tag set, so read-modify-write. This
-    function owns the `retention` tag key on this bucket and overwrites any
-    existing value, so the key must not be used for any other purpose here.
+    function owns the tag key named by RETENTION_TAG_KEY on this bucket and
+    overwrites any existing value, so that key must not be used for any other
+    purpose here. The key and value come from Terraform (RETENTION_TAG_KEY /
+    RETENTION_TAG_VALUE) so they can never drift from the lifecycle rule's
+    filter, which reads the same locals.
     """
+    tag_key = _required_env("RETENTION_TAG_KEY")
+    tag_value = _required_env("RETENTION_TAG_VALUE")
+
     existing = client.get_object_tagging(Bucket=bucket, Key=key)["TagSet"]
-    tags = [tag for tag in existing if tag["Key"] != TAG_KEY]
-    tags.append({"Key": TAG_KEY, "Value": TAG_VALUE})
+    tags = [tag for tag in existing if tag["Key"] != tag_key]
+    tags.append({"Key": tag_key, "Value": tag_value})
     client.put_object_tagging(Bucket=bucket, Key=key, Tagging={"TagSet": tags})
 
 

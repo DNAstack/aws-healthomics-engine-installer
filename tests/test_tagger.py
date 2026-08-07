@@ -5,37 +5,24 @@ import tagger
 
 
 class FakeS3:
-    """Minimal stand-in for the S3 client, recording put calls."""
+    """Stand-in for the S3 client, recording put calls.
 
-    def __init__(self, tag_set=None, get_error=None):
-        self.tag_set = tag_set if tag_set is not None else []
-        self.get_error = get_error
-        self.put_calls = []
-
-    def get_object_tagging(self, **kwargs):
-        if self.get_error is not None:
-            raise self.get_error
-        return {"TagSet": list(self.tag_set)}
-
-    def put_object_tagging(self, **kwargs):
-        self.put_calls.append(kwargs)
-
-
-class KeyedFakeS3:
-    """Stand-in for the S3 client where the failure is keyed per object.
-
-    Lets a single record in a batch fail (or be gone) while the rest succeed.
+    `errors` maps an object key to the exception get_object_tagging should
+    raise for that key. A `None` entry is the fallback applied to every key
+    that has no key-specific entry, which lets a single call site express
+    "every call in this test fails the same way."
     """
 
-    def __init__(self, errors=None):
+    def __init__(self, tag_set=None, errors=None):
+        self.tag_set = tag_set if tag_set is not None else []
         self.errors = errors or {}
         self.put_calls = []
 
     def get_object_tagging(self, **kwargs):
-        error = self.errors.get(kwargs["Key"])
+        error = self.errors.get(kwargs["Key"], self.errors.get(None))
         if error is not None:
             raise error
-        return {"TagSet": []}
+        return {"TagSet": list(self.tag_set)}
 
     def put_object_tagging(self, **kwargs):
         self.put_calls.append(kwargs)
@@ -45,8 +32,13 @@ def client_error(code, operation="GetObjectTagging"):
     return ClientError({"Error": {"Code": code, "Message": code}}, operation)
 
 
-def s3_event(key, bucket="hfs-bch-raw-output"):
-    return {"Records": [{"s3": {"bucket": {"name": bucket}, "object": {"key": key}}}]}
+def s3_event(*keys, bucket="hfs-bch-raw-output"):
+    return {
+        "Records": [
+            {"s3": {"bucket": {"name": bucket}, "object": {"key": key}}}
+            for key in keys
+        ]
+    }
 
 
 @pytest.mark.parametrize(
@@ -78,16 +70,12 @@ def test_is_transient_false_for_retained_suffixes(key):
     assert tagger.is_transient(key) is False
 
 
-def test_object_keys_decodes_plus_and_percent_escapes():
-    event = s3_event("run+1/out/my+file.bam")
-    assert list(tagger.object_keys(event)) == [
-        ("hfs-bch-raw-output", "run 1/out/my file.bam")
-    ]
+def test_record_key_decodes_plus_and_percent_escapes():
+    record = s3_event("run+1/out/my+file.bam")["Records"][0]
+    assert tagger.record_key(record) == ("hfs-bch-raw-output", "run 1/out/my file.bam")
 
-    event = s3_event("run-1/out/a%20b.bam")
-    assert list(tagger.object_keys(event)) == [
-        ("hfs-bch-raw-output", "run-1/out/a b.bam")
-    ]
+    record = s3_event("run-1/out/a%20b.bam")["Records"][0]
+    assert tagger.record_key(record) == ("hfs-bch-raw-output", "run-1/out/a b.bam")
 
 
 def test_tag_transient_preserves_existing_tags():
@@ -119,6 +107,15 @@ def test_tag_transient_replaces_an_existing_retention_tag():
     ]
 
 
+@pytest.mark.parametrize("missing_var", ["RETENTION_TAG_KEY", "RETENTION_TAG_VALUE"])
+def test_tag_transient_raises_when_a_required_env_var_is_missing(monkeypatch, missing_var):
+    monkeypatch.delenv(missing_var, raising=False)
+    client = FakeS3()
+
+    with pytest.raises(RuntimeError, match=missing_var):
+        tagger.tag_transient(client, "bucket", "run-1/out/sample.bam")
+
+
 def test_handler_skips_retained_suffixes_without_calling_s3():
     client = FakeS3()
 
@@ -128,7 +125,7 @@ def test_handler_skips_retained_suffixes_without_calling_s3():
 
 
 def test_handler_swallows_a_deleted_object():
-    client = FakeS3(get_error=client_error("NoSuchKey"))
+    client = FakeS3(errors={None: client_error("NoSuchKey")})
 
     tagger.handler(s3_event("run-1/out/sample.bam"), None, client=client)
 
@@ -136,7 +133,7 @@ def test_handler_swallows_a_deleted_object():
 
 
 def test_handler_reraises_unexpected_client_errors():
-    client = FakeS3(get_error=client_error("AccessDenied"))
+    client = FakeS3(errors={None: client_error("AccessDenied")})
 
     with pytest.raises(ClientError):
         tagger.handler(s3_event("run-1/out/sample.bam"), None, client=client)
@@ -144,13 +141,9 @@ def test_handler_reraises_unexpected_client_errors():
 
 def test_handler_processes_every_record_in_a_batch():
     client = FakeS3()
-    event = {
-        "Records": [
-            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/a.bam"}}},
-            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/logs/a.log"}}},
-            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/b.bam"}}},
-        ]
-    }
+    event = s3_event(
+        "run-1/out/a.bam", "run-1/logs/a.log", "run-1/out/b.bam", bucket="b"
+    )
 
     tagger.handler(event, None, client=client)
 
@@ -161,14 +154,10 @@ def test_handler_processes_every_record_in_a_batch():
 
 
 def test_handler_tags_other_records_then_raises_on_unexpected_error():
-    client = KeyedFakeS3(errors={"run-1/out/b.bam": client_error("InvalidTag")})
-    event = {
-        "Records": [
-            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/a.bam"}}},
-            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/b.bam"}}},
-            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/c.bam"}}},
-        ]
-    }
+    client = FakeS3(errors={"run-1/out/b.bam": client_error("InvalidTag")})
+    event = s3_event(
+        "run-1/out/a.bam", "run-1/out/b.bam", "run-1/out/c.bam", bucket="b"
+    )
 
     with pytest.raises(ClientError):
         tagger.handler(event, None, client=client)
@@ -199,14 +188,10 @@ def test_handler_tags_other_records_and_raises_on_a_malformed_middle_record():
 
 
 def test_handler_tags_other_records_and_does_not_raise_on_a_deleted_middle_record():
-    client = KeyedFakeS3(errors={"run-1/out/b.bam": client_error("NoSuchKey")})
-    event = {
-        "Records": [
-            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/a.bam"}}},
-            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/b.bam"}}},
-            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/c.bam"}}},
-        ]
-    }
+    client = FakeS3(errors={"run-1/out/b.bam": client_error("NoSuchKey")})
+    event = s3_event(
+        "run-1/out/a.bam", "run-1/out/b.bam", "run-1/out/c.bam", bucket="b"
+    )
 
     tagger.handler(event, None, client=client)
 

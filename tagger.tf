@@ -54,6 +54,13 @@ resource "aws_lambda_function" "output_bucket_tagger" {
   # republishing the function and putting churn into every plan.
   source_code_hash = filebase64sha256("${path.module}/function_source/tagger.py")
 
+  environment {
+    variables = {
+      RETENTION_TAG_KEY   = local.transient_tag_key
+      RETENTION_TAG_VALUE = local.transient_tag_value
+    }
+  }
+
   depends_on = [
     archive_file.output_bucket_tagger,
     aws_cloudwatch_log_group.output_bucket_tagger,
