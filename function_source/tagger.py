@@ -34,19 +34,29 @@ def is_transient(key):
     return not key.lower().endswith(RETAINED_SUFFIXES)
 
 
+def record_key(record):
+    """Extract (bucket, key) from a single S3 event record, key percent-decoded.
+
+    Raises KeyError if the record is missing either field.
+    """
+    return (
+        record["s3"]["bucket"]["name"],
+        urllib.parse.unquote_plus(record["s3"]["object"]["key"]),
+    )
+
+
 def object_keys(event):
     """Yield (bucket, key) for each record, with the key percent-decoded."""
     for record in event.get("Records", []):
-        yield (
-            record["s3"]["bucket"]["name"],
-            urllib.parse.unquote_plus(record["s3"]["object"]["key"]),
-        )
+        yield record_key(record)
 
 
 def tag_transient(client, bucket, key):
     """Add the expiry tag, preserving any tags already on the object.
 
-    PutObjectTagging replaces the whole tag set, so read-modify-write.
+    PutObjectTagging replaces the whole tag set, so read-modify-write. This
+    function owns the `retention` tag key on this bucket and overwrites any
+    existing value, so the key must not be used for any other purpose here.
     """
     existing = client.get_object_tagging(Bucket=bucket, Key=key)["TagSet"]
     tags = [tag for tag in existing if tag["Key"] != TAG_KEY]
@@ -55,18 +65,26 @@ def tag_transient(client, bucket, key):
 
 
 def handler(event, context, client=None):
-    """Tag every eligible record, even if some records fail.
+    """Tag every eligible record, even if some records fail or are malformed.
 
-    One bad object must not stop the rest of the batch from being tagged, so
-    unexpected errors are collected rather than raised immediately. Once every
-    record has been attempted, the invocation still fails (re-raising the last
-    error) so Lambda records and retries it — there is no other monitoring on
-    this function, so that failed-invocation signal is what surfaces problems.
+    One bad or malformed record must not stop the rest of the batch from being
+    tagged, so both extraction failures and unexpected tagging errors are
+    collected rather than raised immediately. Once every record has been
+    attempted, the invocation still fails (re-raising the last error) so
+    Lambda records and retries it — there is no other monitoring on this
+    function, so that failed-invocation signal is what surfaces problems.
     """
     client = client or boto3.client("s3")
 
     failures = []
-    for bucket, key in object_keys(event):
+    for record in event.get("Records", []):
+        try:
+            bucket, key = record_key(record)
+        except KeyError as error:
+            logger.error("malformed record, skipping: %r (%s)", record, error)
+            failures.append(error)
+            continue
+
         if not is_transient(key):
             logger.info("retaining s3://%s/%s", bucket, key)
             continue

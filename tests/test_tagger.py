@@ -179,6 +179,25 @@ def test_handler_tags_other_records_then_raises_on_unexpected_error():
     ]
 
 
+def test_handler_tags_other_records_and_raises_on_a_malformed_middle_record():
+    client = FakeS3()
+    event = {
+        "Records": [
+            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/a.bam"}}},
+            {"s3": {"bucket": {"name": "b"}, "object": {}}},
+            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/c.bam"}}},
+        ]
+    }
+
+    with pytest.raises(KeyError):
+        tagger.handler(event, None, client=client)
+
+    assert [call["Key"] for call in client.put_calls] == [
+        "run-1/out/a.bam",
+        "run-1/out/c.bam",
+    ]
+
+
 def test_handler_tags_other_records_and_does_not_raise_on_a_deleted_middle_record():
     client = KeyedFakeS3(errors={"run-1/out/b.bam": client_error("NoSuchKey")})
     event = {

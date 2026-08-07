@@ -3,7 +3,7 @@
 # container. Safe because the Lambda below only reads filename on create,
 # replace, or a code change (which replaces this archive too). Exception: a
 # ForceNew Lambda replacement with tagger.py unchanged (in practice, changing
-# output_bucket_name) fails on the missing zip. Recover with:
+# output_bucket_name or project_name) fails on the missing zip. Recover with:
 # terraform apply -replace=archive_file.output_bucket_tagger
 resource "archive_file" "output_bucket_tagger" {
   type        = "zip"

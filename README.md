@@ -53,6 +53,9 @@ extension list to maintain.
 Objects the tagger misses carry no tag and are governed by `expire-all`, so a
 tagging outage costs a bounded window rather than unbounded growth.
 
+The `retention` key is reserved for this function; anything else that writes
+it on this bucket will have its value overwritten.
+
 Two constraints on changes here:
 
 - The notification must stay `s3:ObjectCreated:*`. Outputs are large enough to be
