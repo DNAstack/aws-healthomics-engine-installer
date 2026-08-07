@@ -25,7 +25,7 @@ resource "aws_iam_role" "output_bucket_tagger" {
 }
 
 resource "aws_iam_role_policy" "output_bucket_tagger" {
-  name   = "tag-transient-outputs"
+  name   = "tag-expiring-outputs"
   role   = aws_iam_role.output_bucket_tagger.id
   policy = data.aws_iam_policy_document.output_bucket_tagger.json
 }
@@ -56,8 +56,8 @@ resource "aws_lambda_function" "output_bucket_tagger" {
 
   environment {
     variables = {
-      RETENTION_TAG_KEY   = local.transient_tag_key
-      RETENTION_TAG_VALUE = local.transient_tag_value
+      EXPIRE_TAG_KEY   = local.expire_tag_key
+      EXPIRE_TAG_VALUE = local.expire_tag_value
     }
   }
 

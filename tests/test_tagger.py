@@ -53,8 +53,8 @@ def s3_event(*keys, bucket="hfs-bch-raw-output"):
         "run-1/out/logs.json.gz",
     ],
 )
-def test_is_transient_true_for_disposable_outputs(key):
-    assert tagger.is_transient(key) is True
+def test_should_expire_true_for_disposable_outputs(key):
+    assert tagger.should_expire(key) is True
 
 
 @pytest.mark.parametrize(
@@ -66,8 +66,8 @@ def test_is_transient_true_for_disposable_outputs(key):
         "run-1/out/MANIFEST.JSON",
     ],
 )
-def test_is_transient_false_for_retained_suffixes(key):
-    assert tagger.is_transient(key) is False
+def test_should_expire_false_for_retained_suffixes(key):
+    assert tagger.should_expire(key) is False
 
 
 def test_record_key_decodes_plus_and_percent_escapes():
@@ -78,10 +78,10 @@ def test_record_key_decodes_plus_and_percent_escapes():
     assert tagger.record_key(record) == ("hfs-bch-raw-output", "run-1/out/a b.bam")
 
 
-def test_tag_transient_preserves_existing_tags():
+def test_tag_for_expiry_preserves_existing_tags():
     client = FakeS3(tag_set=[{"Key": "created_by", "Value": "terraform"}])
 
-    tagger.tag_transient(client, "bucket", "run-1/out/sample.bam")
+    tagger.tag_for_expiry(client, "bucket", "run-1/out/sample.bam")
 
     assert client.put_calls == [
         {
@@ -90,30 +90,30 @@ def test_tag_transient_preserves_existing_tags():
             "Tagging": {
                 "TagSet": [
                     {"Key": "created_by", "Value": "terraform"},
-                    {"Key": "retention", "Value": "transient"},
+                    {"Key": "expire", "Value": "true"},
                 ]
             },
         }
     ]
 
 
-def test_tag_transient_replaces_an_existing_retention_tag():
-    client = FakeS3(tag_set=[{"Key": "retention", "Value": "keep"}])
+def test_tag_for_expiry_replaces_an_existing_expire_tag():
+    client = FakeS3(tag_set=[{"Key": "expire", "Value": "false"}])
 
-    tagger.tag_transient(client, "bucket", "run-1/out/sample.bam")
+    tagger.tag_for_expiry(client, "bucket", "run-1/out/sample.bam")
 
     assert client.put_calls[0]["Tagging"]["TagSet"] == [
-        {"Key": "retention", "Value": "transient"}
+        {"Key": "expire", "Value": "true"}
     ]
 
 
-@pytest.mark.parametrize("missing_var", ["RETENTION_TAG_KEY", "RETENTION_TAG_VALUE"])
-def test_tag_transient_raises_when_a_required_env_var_is_missing(monkeypatch, missing_var):
+@pytest.mark.parametrize("missing_var", ["EXPIRE_TAG_KEY", "EXPIRE_TAG_VALUE"])
+def test_tag_for_expiry_raises_when_a_required_env_var_is_missing(monkeypatch, missing_var):
     monkeypatch.delenv(missing_var, raising=False)
     client = FakeS3()
 
     with pytest.raises(RuntimeError, match=missing_var):
-        tagger.tag_transient(client, "bucket", "run-1/out/sample.bam")
+        tagger.tag_for_expiry(client, "bucket", "run-1/out/sample.bam")
 
 
 def test_handler_skips_retained_suffixes_without_calling_s3():

@@ -37,7 +37,7 @@ def _required_env(name):
     return value
 
 
-def is_transient(key):
+def should_expire(key):
     """True when the object should be tagged for early expiration.
 
     Matched case-insensitively so an unexpectedly-cased run log is retained
@@ -57,18 +57,18 @@ def record_key(record):
     )
 
 
-def tag_transient(client, bucket, key):
+def tag_for_expiry(client, bucket, key):
     """Add the expiry tag, preserving any tags already on the object.
 
     PutObjectTagging replaces the whole tag set, so read-modify-write. This
-    function owns the tag key named by RETENTION_TAG_KEY on this bucket and
+    function owns the tag key named by EXPIRE_TAG_KEY on this bucket and
     overwrites any existing value, so that key must not be used for any other
-    purpose here. The key and value come from Terraform (RETENTION_TAG_KEY /
-    RETENTION_TAG_VALUE) so they can never drift from the lifecycle rule's
+    purpose here. The key and value come from Terraform (EXPIRE_TAG_KEY /
+    EXPIRE_TAG_VALUE) so they can never drift from the lifecycle rule's
     filter, which reads the same locals.
     """
-    tag_key = _required_env("RETENTION_TAG_KEY")
-    tag_value = _required_env("RETENTION_TAG_VALUE")
+    tag_key = _required_env("EXPIRE_TAG_KEY")
+    tag_value = _required_env("EXPIRE_TAG_VALUE")
 
     existing = client.get_object_tagging(Bucket=bucket, Key=key)["TagSet"]
     tags = [tag for tag in existing if tag["Key"] != tag_key]
@@ -97,11 +97,11 @@ def handler(event, context, client=None):
             failures.append(error)
             continue
 
-        if not is_transient(key):
+        if not should_expire(key):
             logger.info("retaining s3://%s/%s", bucket, key)
             continue
         try:
-            tag_transient(client, bucket, key)
+            tag_for_expiry(client, bucket, key)
         except ClientError as error:
             if error.response["Error"]["Code"] in GONE_ERROR_CODES:
                 logger.info("skipping s3://%s/%s: object no longer exists", bucket, key)

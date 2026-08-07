@@ -31,7 +31,7 @@ The output bucket expires its contents through three lifecycle rules:
 
 | Rule | Scope | Default |
 |---|---|---|
-| `expire-transient-outputs` | objects tagged `retention=transient` | 14 days |
+| `expire-tagged-outputs` | objects tagged `expire=true` | 14 days |
 | `expire-all` | every object | 90 days |
 | `abort-incomplete-multipart` | incomplete multipart uploads | 7 days |
 
@@ -46,16 +46,16 @@ matching and no negation — and HealthOmics keys are `<run-id>/logs/…` and
 `<run-id>/out/…`, so no literal prefix can reach the segment that distinguishes
 them. "Everything except run logs and manifests" is therefore expressed by tagging:
 the `<bucket>-tagger` Lambda runs on `s3:ObjectCreated:*` and applies
-`retention=transient` to every object whose key does not end in `.log` or `.json`
+`expire=true` to every object whose key does not end in `.log` or `.json`
 (case-insensitive). New output types are covered automatically — there is no
 extension list to maintain.
 
 Objects the tagger misses carry no tag and are governed by `expire-all`, so a
 tagging outage costs a bounded window rather than unbounded growth.
 
-The `retention` key is reserved for this function; anything else that writes
+The `expire` key is reserved for this function; anything else that writes
 it on this bucket will have its value overwritten. The tag key and value are
-passed to the Lambda by Terraform (`RETENTION_TAG_KEY` / `RETENTION_TAG_VALUE`,
+passed to the Lambda by Terraform (`EXPIRE_TAG_KEY` / `EXPIRE_TAG_VALUE`,
 sourced from the same locals as the lifecycle rule's filter), so they cannot
 drift from the lifecycle rule that depends on them.
 

@@ -28,8 +28,8 @@ locals {
     for account in var.external_ecr_accounts : "arn:aws:ecr:${var.aws_region}:${account}:*"
   ])
 
-  transient_tag_key   = "retention"
-  transient_tag_value = "transient"
+  expire_tag_key   = "expire"
+  expire_tag_value = "true"
 }
 
 

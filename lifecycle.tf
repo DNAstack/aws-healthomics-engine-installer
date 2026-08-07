@@ -3,13 +3,13 @@ resource "aws_s3_bucket_lifecycle_configuration" "output_bucket" {
 
   # Everything the tagger marked: all workflow outputs except run logs and manifests.
   rule {
-    id     = "expire-transient-outputs"
+    id     = "expire-tagged-outputs"
     status = "Enabled"
 
     filter {
       tag {
-        key   = local.transient_tag_key
-        value = local.transient_tag_value
+        key   = local.expire_tag_key
+        value = local.expire_tag_value
       }
     }
 
