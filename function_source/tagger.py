@@ -55,8 +55,17 @@ def tag_transient(client, bucket, key):
 
 
 def handler(event, context, client=None):
+    """Tag every eligible record, even if some records fail.
+
+    One bad object must not stop the rest of the batch from being tagged, so
+    unexpected errors are collected rather than raised immediately. Once every
+    record has been attempted, the invocation still fails (re-raising the last
+    error) so Lambda records and retries it — there is no other monitoring on
+    this function, so that failed-invocation signal is what surfaces problems.
+    """
     client = client or boto3.client("s3")
 
+    failures = []
     for bucket, key in object_keys(event):
         if not is_transient(key):
             logger.info("retaining s3://%s/%s", bucket, key)
@@ -67,4 +76,8 @@ def handler(event, context, client=None):
             if error.response["Error"]["Code"] in GONE_ERROR_CODES:
                 logger.info("skipping s3://%s/%s: object no longer exists", bucket, key)
                 continue
-            raise
+            logger.error("failed to tag s3://%s/%s: %s", bucket, key, error)
+            failures.append(error)
+
+    if failures:
+        raise failures[-1]

@@ -21,6 +21,26 @@ class FakeS3:
         self.put_calls.append(kwargs)
 
 
+class KeyedFakeS3:
+    """Stand-in for the S3 client where the failure is keyed per object.
+
+    Lets a single record in a batch fail (or be gone) while the rest succeed.
+    """
+
+    def __init__(self, errors=None):
+        self.errors = errors or {}
+        self.put_calls = []
+
+    def get_object_tagging(self, **kwargs):
+        error = self.errors.get(kwargs["Key"])
+        if error is not None:
+            raise error
+        return {"TagSet": []}
+
+    def put_object_tagging(self, **kwargs):
+        self.put_calls.append(kwargs)
+
+
 def client_error(code, operation="GetObjectTagging"):
     return ClientError({"Error": {"Code": code, "Message": code}}, operation)
 
@@ -137,4 +157,41 @@ def test_handler_processes_every_record_in_a_batch():
     assert [call["Key"] for call in client.put_calls] == [
         "run-1/out/a.bam",
         "run-1/out/b.bam",
+    ]
+
+
+def test_handler_tags_other_records_then_raises_on_unexpected_error():
+    client = KeyedFakeS3(errors={"run-1/out/b.bam": client_error("InvalidTag")})
+    event = {
+        "Records": [
+            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/a.bam"}}},
+            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/b.bam"}}},
+            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/c.bam"}}},
+        ]
+    }
+
+    with pytest.raises(ClientError):
+        tagger.handler(event, None, client=client)
+
+    assert [call["Key"] for call in client.put_calls] == [
+        "run-1/out/a.bam",
+        "run-1/out/c.bam",
+    ]
+
+
+def test_handler_tags_other_records_and_does_not_raise_on_a_deleted_middle_record():
+    client = KeyedFakeS3(errors={"run-1/out/b.bam": client_error("NoSuchKey")})
+    event = {
+        "Records": [
+            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/a.bam"}}},
+            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/b.bam"}}},
+            {"s3": {"bucket": {"name": "b"}, "object": {"key": "run-1/out/c.bam"}}},
+        ]
+    }
+
+    tagger.handler(event, None, client=client)
+
+    assert [call["Key"] for call in client.put_calls] == [
+        "run-1/out/a.bam",
+        "run-1/out/c.bam",
     ]
