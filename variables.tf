@@ -206,7 +206,7 @@ variable "output_bucket_expiration_days" {
 }
 
 variable "output_bucket_max_retention_days" {
-  description = "Days after creation that every object in the output bucket is expired regardless of tagging. Bounds the cost if the tagging function stops working, and is therefore also the retention window for HealthOmics run logs and JSON manifests."
+  description = "Days after creation that every object in the output bucket is expired regardless of tagging. Bounds the cost if the tagging function stops working, and is therefore also the retention window for HealthOmics run logs and JSON manifests. Raising this does NOT extend the workflow outputs — those are tagged, so they match both rules and S3 applies the earlier output_bucket_expiration_days. Must stay above output_bucket_expiration_days."
   type        = number
   default     = 90
   nullable    = false

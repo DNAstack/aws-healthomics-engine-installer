@@ -37,7 +37,9 @@ The output bucket expires its contents through three lifecycle rules:
 
 Tune with `output_bucket_expiration_days`, `output_bucket_max_retention_days` and
 `output_bucket_abort_multipart_days`. There is no switch to disable expiration; an
-environment with a retention obligation raises `output_bucket_max_retention_days`.
+environment with a retention obligation raises `output_bucket_expiration_days`, which
+governs the outputs themselves. `output_bucket_max_retention_days` extends only the run
+logs and manifests, and must stay above it.
 
 ### Why objects are tagged
 
