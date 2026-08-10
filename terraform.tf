@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/awscc"
       version = ">= 1.78.0"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.5.0"
+    }
   }
   required_version = "~> 1.7"
 }

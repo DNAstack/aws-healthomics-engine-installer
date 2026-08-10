@@ -142,7 +142,7 @@ variable "submit_run_quota" {
 variable "outbound_identity_token_audiences" {
   description = "List of allowed audiences for outbound identity federation tokens (e.g., Client IDs)"
   type        = list(string)
-  default = []
+  default     = []
 }
 
 variable "enable_vpc_networking" {
@@ -191,4 +191,40 @@ variable "configuration_name" {
   type        = string
   default     = null
   nullable    = true
+}
+
+variable "output_bucket_expiration_days" {
+  description = "Days after creation that tagged HealthOmics outputs (everything except run logs and JSON manifests) are expired from the output bucket."
+  type        = number
+  default     = 14
+  nullable    = false
+
+  validation {
+    condition     = var.output_bucket_expiration_days >= 1
+    error_message = "output_bucket_expiration_days must be at least 1."
+  }
+}
+
+variable "output_bucket_max_retention_days" {
+  description = "Days after creation that every object in the output bucket is expired regardless of tagging. Bounds the cost if the tagging function stops working, and is therefore also the retention window for HealthOmics run logs and JSON manifests. Raising this does NOT extend the workflow outputs — those are tagged, so they match both rules and S3 applies the earlier output_bucket_expiration_days. Must stay above output_bucket_expiration_days."
+  type        = number
+  default     = 90
+  nullable    = false
+
+  validation {
+    condition     = var.output_bucket_max_retention_days >= 1
+    error_message = "output_bucket_max_retention_days must be at least 1."
+  }
+}
+
+variable "output_bucket_abort_multipart_days" {
+  description = "Days after initiation that incomplete multipart uploads to the output bucket are aborted."
+  type        = number
+  default     = 7
+  nullable    = false
+
+  validation {
+    condition     = var.output_bucket_abort_multipart_days >= 1
+    error_message = "output_bucket_abort_multipart_days must be at least 1."
+  }
 }

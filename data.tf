@@ -27,6 +27,9 @@ locals {
   ecr_resources = concat(["arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:*"], [
     for account in var.external_ecr_accounts : "arn:aws:ecr:${var.aws_region}:${account}:*"
   ])
+
+  expire_tag_key   = "expire"
+  expire_tag_value = "true"
 }
 
 
@@ -218,5 +221,39 @@ data "aws_iam_policy_document" "output_bucket_policy" {
       variable = "aws:SecureTransport"
       values   = ["false"]
     }
+  }
+}
+
+data "aws_iam_policy_document" "output_bucket_tagger_trust" {
+  statement {
+    sid     = "AllowLambdaService"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "output_bucket_tagger" {
+  statement {
+    sid = "TagOutputObjects"
+    actions = [
+      "s3:GetObjectTagging",
+      "s3:PutObjectTagging",
+    ]
+
+    resources = ["${aws_s3_bucket.output_bucket.arn}/*"]
+  }
+
+  statement {
+    sid = "WriteFunctionLogs"
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+    ]
+
+    resources = ["${aws_cloudwatch_log_group.output_bucket_tagger.arn}:*"]
   }
 }

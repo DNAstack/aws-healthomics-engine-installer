@@ -41,3 +41,8 @@ terraform.rc
 *.iws
 *.iml
 *.ipr
+
+### Python ###
+.venv/
+__pycache__/
+function_source/tagger.zip
