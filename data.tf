@@ -201,6 +201,18 @@ data "aws_iam_policy_document" "health_omics_ecr_policy" {
 
 data "aws_iam_policy_document" "output_bucket_policy" {
   statement {
+    sid       = "AllowHealthOmicsReadEncryption"
+    effect    = "Allow"
+    actions   = ["s3:GetEncryptionConfiguration"]
+    resources = [aws_s3_bucket.output_bucket.arn]
+
+    principals {
+      type        = "AWS"
+      identifiers = [aws_iam_role.health_omics_role.arn]
+    }
+  }
+
+  statement {
     sid    = "DenyInsecureTransport"
     effect = "Deny"
 
